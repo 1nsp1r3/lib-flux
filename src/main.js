@@ -32,9 +32,12 @@ class Flux{
     this.subject = new Subject()
     this.subject
       .pipe(
-        tap((Value)      => console.log(this.id, Value)),
+        //tap((Value)      => console.log(this.id, Value)),
         mergeMap((Value) => this.#storeValue(Value)),
-        mergeMap((Item)  => this.#graphValue(Item)),
+        mergeMap((Item)  => {
+          this.#addGraphData(Item)
+          return of(Item)
+        }),
       )
       .subscribe()
   }
@@ -45,6 +48,7 @@ class Flux{
 
   downloadCsv(HtmlLink){
     const list = LibStorage.loadObject(this.id)
+    if (!list.length) throw 'Storage is empty'
     const filename = `${LibDate.dateFilename(list[0].ts)}_${LibDate.timeFilename(list[0].ts)}_${this.id}.csv`
     const header = `ts%2C${this.id}`
 
@@ -53,12 +57,30 @@ class Flux{
       href += `${item.ts}%2C${item.value}%0A`
     }
 
-    this.data = []
-    LibStorage.saveObject(this.id, this.data)
+    this.clearStorage()
 
     HtmlLink.href = href
     HtmlLink.download = filename
     HtmlLink.click()
+  }
+
+  clearGraph(){
+    this.graph.chart.data.labels = []
+    this.graph.chart.data.datasets[0].data = []
+    this.graph.chart.update()
+  }
+
+  refreshGraph(){
+    const list = LibStorage.loadObject(this.id)
+    this.clearGraph()
+    for(const item of list){
+      this.#addGraphData(item)
+    }
+  }
+
+  clearStorage(){
+    this.data = []
+    LibStorage.saveObject(this.id, this.data)
   }
 
   #storeValue(Value){
@@ -71,12 +93,11 @@ class Flux{
     return of(item)
   }
 
-  #graphValue(Item){
+  #addGraphData(Item){
     this.graph.addData({
       label: LibDate.time(Item.ts),
       value: this.graphValueformatter(Item.value),
     })
-    return of(Item)
   }
 
   /**
