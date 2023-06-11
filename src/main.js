@@ -1,34 +1,39 @@
-const Rxjs       = require("../lib/rxjs-7.8.1.min.js")
-const LibGraph   = require("../lib/lib.graph.min.js")
-const LibDate    = require("../lib/esp.lib.date.min.js")
-const LibStorage = require("../lib/lib.storage.min.js")
-
-//Unable to use rxjs from npm, the generate lib.flux.min.js is not usable :(
-const Subject  = Rxjs.Subject
-const tap      = Rxjs.tap
-const mergeMap = Rxjs.mergeMap
-const of       = Rxjs.of
+import { Subject, tap, mergeMap, of } from "rxjs"
+import Graph                          from "../lib/lib.graph.min.mjs"
+import Storage                        from "../lib/lib.storage.min.mjs"
 
 class Flux{
   /**
    * Options: {
-   *   id   : "temperature",
-   *   title: "Température (°C)",
+  *    id                 : "temperature",
+   *   htmlCanvasElement  : document.getElementById("canvasId"),
+   *   title              : "Température (°C)",
    *   graphValueformatter: (v) => v*1.852,
    * }
    */
   constructor(Options){
-    this.id      = Options.id
-    this.data    = LibStorage.loadObject(this.id)
-    this.graph   = new LibGraph(
-      `graph${this.#upperFirstLetter(this.id)}`, //canvas id
+    this.id = Options.id
+
+    /**
+     * GRAPH
+     */
+    this.graph = new Graph(
+      Options.htmlCanvasElement,
       Options.title,
     )
-    this.graph.display()
 
     this.graphValueformatter = Options.graphValueformatter
     if (this.graphValueformatter == undefined) this.graphValueformatter = (v) => v
 
+    //If data already present, display them on the graph
+    this.data = Storage.loadObject(this.id)
+    for(const item of this.data){
+      this.#addGraphData(item)
+    }
+
+    /**
+     * RXJS
+     */
     this.subject = new Subject()
     this.subject
       .pipe(
@@ -47,9 +52,9 @@ class Flux{
   }
 
   downloadCsv(HtmlLink){
-    const list = LibStorage.loadObject(this.id)
+    const list = Storage.loadObject(this.id)
     if (!list.length) throw 'Storage is empty'
-    const filename = `${LibDate.dateFilename(list[0].ts)}_${LibDate.timeFilename(list[0].ts)}_${this.id}.csv`
+    const filename = this.#generateFileName(list[0].ts)
     const header = `ts%2C${this.id}`
 
     let href = `data:text/csv,${header}%0A`
@@ -70,43 +75,45 @@ class Flux{
     this.graph.chart.update()
   }
 
-  refreshGraph(){
-    const list = LibStorage.loadObject(this.id)
-    this.clearGraph()
-    for(const item of list){
-      this.#addGraphData(item)
-    }
-  }
-
   clearStorage(){
     this.data = []
-    LibStorage.saveObject(this.id, this.data)
+    Storage.saveObject(this.id, this.data)
   }
 
   #storeValue(Value){
     const item = {
-      ts   : Date.now(),
+      ts: Date.now(),
       value: Value,
     }
     this.data.push(item)
-    LibStorage.saveObject(this.id, this.data)
+    Storage.saveObject(this.id, this.data)
     return of(item)
   }
 
   #addGraphData(Item){
     this.graph.addData({
-      label: LibDate.time(Item.ts),
-      value: this.graphValueformatter(Item.value),
+      x: Item.ts,
+      y: this.graphValueformatter(Item.value),
     })
   }
 
   /**
-   * Transform roi into Roi
+   * Return "20230629_145426_temperature.csv"
    */
-  #upperFirstLetter(Text){
-    return Text.charAt(0).toUpperCase() + Text.slice(1)
+  #generateFileName(Now){
+    const now = new Date(Now)
+    const year = now.getFullYear().toString()
+    const month = (now.getMonth()+1).toString().padStart(2, "0")
+    const day = now.getDate().toString().padStart(2, "0")
+    const date = `${year}${month}${day}` //"20230629" for 06/29/2023
+
+    const hh = now.getHours().toString().padStart(2, "0")
+    const mm = now.getMinutes().toString().padStart(2, "0")
+    const ss = now.getSeconds().toString().padStart(2, "0")
+    const time = `${hh}${mm}${ss}` //"145426" for 14h54 26s
+
+    return `${date}_${time}_${this.id}.csv`
   }
 }
 
-//CommonJS style
-module.exports = Flux
+export default Flux

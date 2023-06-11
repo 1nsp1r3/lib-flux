@@ -1,32 +1,40 @@
 import { interval } from "rxjs"
-
-const LibFlux = require("../../dist/lib.flux.min.js")
-
-console.log("Bonjour :-)")
+import Flux         from "../../dist/lib.flux.min.mjs"
 
 const linkCsv = document.getElementById("csv")
 
 const temperature = {
+  canvas             : document.querySelector('div.temperature canvas[name="graph"]'),
   buttonDownload     : document.querySelector('div.temperature input[name="download"]'),
-  buttonClearGraph   : document.querySelector('div.temperature input[name="clearGraph"]'),
-  buttonRefreshGraph : document.querySelector('div.temperature input[name="refreshGraph"]'),
   buttonClearStorage : document.querySelector('div.temperature input[name="clearStorage"]'),
   checkboxLive       : document.querySelector('div.temperature input[name="live"]'),
 }
 
-const fluxTemperature = new LibFlux({
+const fluxTemperature = new Flux({
   id: "temperature",
+  htmlCanvasElement: temperature.canvas,
   title: "Température (°C)",
 })
-
-fluxTemperature.refreshGraph()
 
 interval(1000)
   .subscribe((Value) => {
     if (temperature.checkboxLive.checked) fluxTemperature.pushValue(Value)
   })
 
-temperature.buttonDownload.addEventListener("click", async Event => fluxTemperature.downloadCsv(linkCsv))
-temperature.buttonClearGraph.addEventListener("click", async Event => fluxTemperature.clearGraph())
-temperature.buttonRefreshGraph.addEventListener("click", async Event => fluxTemperature.refreshGraph())
-temperature.buttonClearStorage.addEventListener("click", async Event => fluxTemperature.clearStorage())
+temperature.buttonDownload.addEventListener("click", async Event => {
+  fluxTemperature.downloadCsv(linkCsv)
+  fluxTemperature.clearGraph()
+})
+
+let clearConfirm = false
+temperature.buttonClearStorage.addEventListener("click", async Event => {
+  if (clearConfirm){
+    fluxTemperature.clearStorage()
+    fluxTemperature.clearGraph()
+    temperature.buttonClearStorage.value = "Clear storage"
+    clearConfirm = false
+  }else{
+    temperature.buttonClearStorage.value = "Sure ?"
+    clearConfirm = true
+  }
+})

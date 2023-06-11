@@ -18,29 +18,28 @@
       /*border: 1px #F0F0F0 solid;*/
       width: 200px;
     }
+
+    input[type=button]{
+      width: 100px;
+    }
   </style>
   <body>
     <h1>Test lib.flux.min.js</h1>
     <div class="row temperature">
-      <div class="graph">
-        <canvas id="graphTemperature"></canvas>
+      <div style="width: 600px">
+        <canvas name="graph"></canvas>
       </div>
       <div class="options">
         <div>
-          Live <input name="live" type="checkbox" checked>
-        </div>
-        <hr>
-        <div>
-          <input name="clearGraph" type="button" value="Clear graph">
-          <input name="refreshGraph" type="button" value="Refresh graph">
-        </div>
-        <hr>
-        <div>
-          <input name="clearStorage" type="button" value="Clear storage">
+          Live <input name="live" type="checkbox">
         </div>
         <hr>
         <div>
           <input name="download" type="button" value="Download CSV">
+        </div>
+        <hr>
+        <div>
+          <input name="clearStorage" type="button" value="Clear storage">
         </div>
       </div>
     </div>
